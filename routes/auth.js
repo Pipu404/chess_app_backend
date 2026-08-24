@@ -12,7 +12,9 @@ const publicUser = (user) => ({
   name: user.name,
   email: user.email,
   role: user.role || USER_ROLES.PLAYER,
-  puzzleRating: user.puzzleRating || 1200
+  puzzleRating: user.puzzleRating || 1200,
+  chessRating: user.chessRating || 1200,
+  ratingHistory: [...(user.ratingHistory || [])].slice(-20).reverse()
 });
 
 // Register

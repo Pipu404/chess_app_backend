@@ -3,13 +3,22 @@ const jwt = require('jsonwebtoken');
 const SESSION_COOKIE = 'chess_session';
 const SESSION_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
-const cookieOptions = () => ({
-  httpOnly: true,
-  sameSite: 'lax',
-  secure: process.env.NODE_ENV === 'production',
-  maxAge: SESSION_MAX_AGE_MS,
-  path: '/'
-});
+const sameSiteValue = () => {
+  const configured = String(process.env.COOKIE_SAME_SITE || '').toLowerCase();
+  if (['lax', 'strict', 'none'].includes(configured)) return configured;
+  return process.env.NODE_ENV === 'production' ? 'none' : 'lax';
+};
+
+const cookieOptions = () => {
+  const sameSite = sameSiteValue();
+  return {
+    httpOnly: true,
+    sameSite,
+    secure: process.env.NODE_ENV === 'production' || sameSite === 'none',
+    maxAge: SESSION_MAX_AGE_MS,
+    path: '/'
+  };
+};
 
 const createSessionToken = (user) => jwt.sign(
   { userId: user.id, role: user.role || 'player' },

@@ -9,7 +9,8 @@ const MoveSchema = new mongoose.Schema({
 
 const ReviewMoveSchema = new mongoose.Schema({
   index: Number, moveNumber: Number, color: String, san: String, from: String, to: String,
-  fen: String, evaluation: Number, loss: Number, classification: String, bestMove: String
+  fen: String, evaluation: Number, evaluationBefore: Number, loss: Number, classification: String,
+  bestMove: String, bestLine: { type: [String], default: [] }, explanation: String
 }, { _id: false });
 
 const GameSchema = new mongoose.Schema({
@@ -27,6 +28,7 @@ const GameSchema = new mongoose.Schema({
   pgn: { type: String, default: '' },
   finalFen: { type: String, required: true },
   review: { type: [ReviewMoveSchema], default: [] },
+  reviewVersion: { type: Number, default: 0 },
   reviewedAt: { type: Date, default: null }
 }, { timestamps: true });
 

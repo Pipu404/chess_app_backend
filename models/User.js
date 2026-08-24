@@ -12,6 +12,18 @@ const UserSchema = new mongoose.Schema({
     required: true
   },
   puzzleRating: { type: Number, min: 100, max: 3000, default: 1200 },
+  chessRating: { type: Number, min: 100, max: 4000, default: 1200 },
+  ratingHistory: {
+    type: [{
+      rating: { type: Number, required: true },
+      change: { type: Number, required: true },
+      opponentName: { type: String, required: true },
+      result: { type: String, enum: ['win', 'loss', 'draw'], required: true },
+      gameId: { type: mongoose.Schema.Types.ObjectId, ref: 'OnlineGame', required: true },
+      playedAt: { type: Date, default: Date.now }
+    }],
+    default: []
+  },
   createdAt: { type: Date, default: Date.now }
 });
 
