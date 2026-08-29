@@ -9,12 +9,23 @@ const sameSiteValue = () => {
   return process.env.NODE_ENV === 'production' ? 'none' : 'lax';
 };
 
-const cookieOptions = () => {
-  const sameSite = sameSiteValue();
+const requestIsSecure = (req) => {
+  const forwardedProtocol = req?.headers?.['x-forwarded-proto']
+    ?.split(',')[0]
+    ?.trim()
+    .toLowerCase();
+  return Boolean(req?.secure || forwardedProtocol === 'https');
+};
+
+const cookieOptions = (req) => {
+  const secure = requestIsSecure(req);
+  // Browsers reject Secure cookies over localhost HTTP. A non-secure request
+  // must also use Lax because SameSite=None requires the Secure attribute.
+  const sameSite = secure ? sameSiteValue() : 'lax';
   return {
     httpOnly: true,
     sameSite,
-    secure: process.env.NODE_ENV === 'production' || sameSite === 'none',
+    secure,
     maxAge: SESSION_MAX_AGE_MS,
     path: '/'
   };
@@ -26,12 +37,12 @@ const createSessionToken = (user) => jwt.sign(
   { expiresIn: '7d' }
 );
 
-const setSessionCookie = (res, user) => {
-  res.cookie(SESSION_COOKIE, createSessionToken(user), cookieOptions());
+const setSessionCookie = (res, user, req) => {
+  res.cookie(SESSION_COOKIE, createSessionToken(user), cookieOptions(req));
 };
 
-const clearSessionCookie = (res) => {
-  const { maxAge, ...options } = cookieOptions();
+const clearSessionCookie = (res, req) => {
+  const { maxAge, ...options } = cookieOptions(req);
   res.clearCookie(SESSION_COOKIE, options);
 };
 

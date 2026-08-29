@@ -186,7 +186,7 @@ function initializeOnlineChess(io) {
     }
   });
 
-  io.on('connection', async socket => {
+  io.on('connection', socket => {
     const userRoom = `user:${socket.user.id}`;
     socket.join(userRoom);
     connectedUsers.set(socket.user.id, (connectedUsers.get(socket.user.id) || 0) + 1);
@@ -194,17 +194,16 @@ function initializeOnlineChess(io) {
     if (disconnectHandle) clearTimeout(disconnectHandle);
     disconnectHandles.delete(socket.user.id);
 
-    try {
-      const active = await OnlineGame.findOne({
+    void OnlineGame.findOne({
         status: 'active', $or: [{ whiteUserId: socket.user.id }, { blackUserId: socket.user.id }]
-      }).sort({ updatedAt: -1 });
-      if (active) {
+      })
+      .sort({ updatedAt: -1 })
+      .then(active => {
+        if (!active) return;
         emitState(active);
         scheduleTimeout(active);
-      }
-    } catch (error) {
-      socket.emit('online:error', { message: 'Could not restore your active game.' });
-    }
+      })
+      .catch(() => socket.emit('online:error', { message: 'Could not restore your active game.' }));
 
     socket.on('online:join-queue', async payload => {
       try {

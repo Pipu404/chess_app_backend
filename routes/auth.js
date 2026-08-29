@@ -36,7 +36,7 @@ router.post('/signup', async (req, res) => {
     user = new User({ name, email: normalizedEmail, password: hashedPassword, role });
     await user.save();
 
-    setSessionCookie(res, user);
+    setSessionCookie(res, user, req);
     res.status(201).json({ user: publicUser(user) });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -54,7 +54,7 @@ router.post('/login', async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(400).json({ msg: 'Invalid credentials' });
 
-    setSessionCookie(res, user);
+    setSessionCookie(res, user, req);
     res.json({ user: publicUser(user) });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -71,8 +71,42 @@ router.get('/me', requireAuth, async (req, res) => {
   }
 });
 
+router.patch('/me', requireAuth, async (req, res) => {
+  try {
+    const { name, email, currentPassword, newPassword } = req.body;
+    const user = await User.findById(req.auth.userId);
+    if (!user) return res.status(401).json({ msg: 'User account not found' });
+
+    const nextName = typeof name === 'string' ? name.trim() : user.name;
+    const nextEmail = typeof email === 'string' ? email.toLowerCase().trim() : user.email;
+    if (nextName.length < 2 || nextName.length > 80) return res.status(400).json({ msg: 'Name must be between 2 and 80 characters' });
+    if (!/^\S+@\S+\.\S+$/.test(nextEmail)) return res.status(400).json({ msg: 'Enter a valid email address' });
+
+    if (nextEmail !== user.email) {
+      const emailInUse = await User.exists({ email: nextEmail, _id: { $ne: user._id } });
+      if (emailInUse) return res.status(409).json({ msg: 'That email address is already in use' });
+    }
+
+    if (newPassword) {
+      if (newPassword.length < 8) return res.status(400).json({ msg: 'New password must be at least 8 characters' });
+      if (!currentPassword || !(await bcrypt.compare(currentPassword, user.password))) {
+        return res.status(400).json({ msg: 'Your current password is incorrect' });
+      }
+      user.password = await bcrypt.hash(newPassword, 10);
+    }
+
+    user.name = nextName;
+    user.email = nextEmail;
+    await user.save();
+    setSessionCookie(res, user, req);
+    return res.json({ user: publicUser(user) });
+  } catch {
+    return res.status(500).json({ msg: 'Unable to update your profile' });
+  }
+});
+
 router.post('/logout', (req, res) => {
-  clearSessionCookie(res);
+  clearSessionCookie(res, req);
   res.json({ msg: 'Signed out' });
 });
 

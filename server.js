@@ -1,4 +1,4 @@
-require('dotenv').config();
+require('./utils/environment').loadEnvironment();
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -30,7 +30,24 @@ validateProductionEnvironment();
 const app = express();
 const server = http.createServer(app);
 const allowedOrigins = String(process.env.CLIENT_ORIGINS || process.env.CLIENT_ORIGIN || 'http://localhost:3000').split(',').map(origin => origin.trim()).filter(Boolean);
-const originAllowed = origin => !origin || allowedOrigins.includes(origin);
+const isPrivateDevelopmentOrigin = (origin) => {
+  try {
+    const url = new URL(origin);
+    if (url.protocol !== 'http:' || url.port !== '3000') return false;
+    const host = url.hostname;
+    return host === 'localhost'
+      || host === '127.0.0.1'
+      || host === '::1'
+      || /^10\./.test(host)
+      || /^192\.168\./.test(host)
+      || /^172\.(1[6-9]|2\d|3[01])\./.test(host);
+  } catch {
+    return false;
+  }
+};
+const originAllowed = origin => !origin
+  || allowedOrigins.includes(origin)
+  || isPrivateDevelopmentOrigin(origin);
 const corsOptions = {
   origin(origin, callback) { callback(originAllowed(origin) ? null : new Error('Origin not allowed'), originAllowed(origin)); },
   credentials: true
